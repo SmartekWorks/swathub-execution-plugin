@@ -12,6 +12,7 @@ import hudson.tasks.Builder;
 import hudson.util.FormValidation;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.apache.log4j.*;
 import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -19,6 +20,8 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URLEncoder;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -100,6 +103,7 @@ public class ExecutionBuilder extends Builder {
 		public JSONObject call() throws Exception {
 			Utils utils = new Utils();
 			JSONObject result = utils.apiPost(apiUrl, accessKey, secretKey, "", proxy);
+
 			return result;
 		}
 
@@ -126,6 +130,7 @@ public class ExecutionBuilder extends Builder {
 		public JSONObject call() throws Exception {
 			Utils utils = new Utils();
 			JSONObject result = utils.apiGet(apiUrl, accessKey, secretKey, proxy);;
+
 			return result;
 		}
 
@@ -139,6 +144,15 @@ public class ExecutionBuilder extends Builder {
 	public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
 		// This is where you 'build' the project.
 		// Since this is a dummy, we just say 'hello world' and call that a build.
+
+		boolean result = true;
+		Logger logger = LogManager.getLogger("logger");
+
+		PatternLayout layout = new PatternLayout("%d %-5p - %m%n");
+		StringWriter logsw = new StringWriter();
+		logger.setLevel(Level.INFO);
+		logger.addAppender(new WriterAppender(layout, logsw));
+
 		Utils utils = new Utils();
 		String domain = getDescriptor().getDomain();
 		String ownerName = getDescriptor().getOwnerName();
@@ -152,14 +166,20 @@ public class ExecutionBuilder extends Builder {
 		proxy.put("username", getDescriptor().getProxyUsername());
 		proxy.put("password", getDescriptor().getProxyPassword());
 
+		logger.info("userName:" + userName);
+		logger.info("apiKey:" + apiKey);
+		logger.info("proxy:" + proxy.toString());
+
 		JSONObject execResult;
 		ArrayList<String> completedList = new ArrayList<String>();
 
 		try {
 			String params = "nodeName=" + URLEncoder.encode(nodeName, "UTF-8") + "&nodeType=" + nodeType + "&platform=" + URLEncoder.encode(platformCode, "UTF-8") + "&isSequential=" + (isSequential?"true":"false");
+			logger.info("post:" + domain + "/api/" + ownerName + "/" + workspace + "/sets/" + testSetID +"/run?" + params);
 			JSONObject jobResult = launcher.getChannel().call(new PostCallable(domain + "/api/" + ownerName + "/" + workspace + "/sets/" + testSetID +"/run?" + params, userName, apiKey, proxy));
 
 			while (true) {
+				logger.info("get:" + domain + "/api/" + ownerName + "/" + workspace + "/jobs/" + jobResult.getString("jobID") +"/query");
 				execResult = launcher.getChannel().call(new GetCallable(domain + "/api/" + ownerName + "/" + workspace + "/jobs/" + jobResult.getString("jobID") +"/query", userName, apiKey, proxy));
 				JSONArray tasks = execResult.getJSONArray("tasks");
 				for (int i = 0; i < tasks.size(); i++) {
@@ -191,11 +211,26 @@ public class ExecutionBuilder extends Builder {
 			utils.createXmlFile(new FilePath(build.getWorkspace(), "swat_result.xml"), execResult);
 		} catch (Exception e) {
 			listener.getLogger().println(e.getMessage());
-			return false;
+
+			StringWriter sw = new StringWriter();
+			PrintWriter spw = new PrintWriter(sw);
+			e.printStackTrace(spw);
+			logger.error(sw.toString());
+			spw.close();
+			result = false;
 		}
 
+		try {
+			FilePath logFile = new FilePath(build.getWorkspace(), "swathub.log");
+			PrintWriter fpw = new PrintWriter(logFile.write());
+			fpw.println(logsw.toString());
+			logsw.close();
+			fpw.close();
+		} catch (Exception fe) {
+
+		}
 		// This also shows how you can consult the global configuration of the builder
-		return true;
+		return result;
 	}
 
 	// Overridden for better type safety.

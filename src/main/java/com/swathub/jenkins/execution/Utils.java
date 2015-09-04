@@ -4,6 +4,18 @@ import hudson.FilePath;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.http.HttpHeaders;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpResponse;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.Credentials;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.*;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
@@ -15,44 +27,38 @@ public class Utils {
 	public JSONObject apiGet(String apiUrl, String accessKey, String secretKey, final HashMap<String, String> proxy) throws Exception{
 		JSONObject ret;
 
-		URL url = new URL(apiUrl);
-		HttpURLConnection conn;
+		CredentialsProvider credsProvider = new BasicCredentialsProvider();
+		credsProvider.setCredentials(AuthScope.ANY,
+				new UsernamePasswordCredentials(accessKey, secretKey));
+		HttpClientBuilder clientBuilder = HttpClientBuilder.create();
+		clientBuilder.useSystemProperties();
+
 		if (!proxy.get("server").isEmpty()) {
-			Proxy proxyServer = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxy.get("server"), Integer.parseInt(proxy.get("port"))));
-			if (!proxy.get("username").isEmpty()) {
-				Authenticator authenticator = new Authenticator() {
-					public PasswordAuthentication getPasswordAuthentication() {
-						return (new PasswordAuthentication(proxy.get("username"),
-								proxy.get("password").toCharArray()));
-					}
-				};
-				Authenticator.setDefault(authenticator);
-			}
-			conn = (HttpURLConnection) url.openConnection(proxyServer);
-		} else {
-			conn = (HttpURLConnection) url.openConnection();
-		}
-		conn.setDoOutput(true);
-		conn.setRequestMethod("GET");
-
-		String authString = accessKey + ":" + secretKey;
-		byte[] authEncBytes = Base64.encodeBase64(authString.getBytes());
-		String authStringEnc = new String(authEncBytes);
-		conn.setRequestProperty("Authorization", "Basic " + authStringEnc);
-
-		if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
-			throw new Exception("SWAT Hub api call return false." + conn.getResponseCode());
+			credsProvider.setCredentials(
+					new AuthScope(proxy.get("server"), Integer.parseInt(proxy.get("port"))),
+					new UsernamePasswordCredentials(proxy.get("username"), proxy.get("password")));
+			clientBuilder.setProxy(new HttpHost(proxy.get("server"), Integer.parseInt(proxy.get("port"))));
+			clientBuilder.setProxyAuthenticationStrategy(new ProxyAuthenticationStrategy());
 		}
 
-		BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
+		clientBuilder.setDefaultCredentialsProvider(credsProvider);
+		CloseableHttpClient httpclient = clientBuilder.build();
+		HttpGet request = new HttpGet(apiUrl);
 
-		StringBuilder result = new StringBuilder();
-		String output;
-		while ((output = br.readLine()) != null) {
-			result.append(output);
+		HttpResponse response = httpclient.execute(request);
+
+		if (response.getStatusLine().getStatusCode() != HttpURLConnection.HTTP_OK) {
+			throw new Exception("SWAT Hub api call return false." + response.getStatusLine().getStatusCode());
 		}
 
-		conn.disconnect();
+		BufferedReader rd = new BufferedReader(
+				new InputStreamReader(response.getEntity().getContent()));
+		StringBuffer result = new StringBuffer();
+		String line;
+		while ((line = rd.readLine()) != null) {
+			result.append(line);
+		}
+		httpclient.close();
 
 		ret = new JSONObject().fromObject(result.toString());
 
@@ -62,49 +68,39 @@ public class Utils {
 	public JSONObject apiPost(String apiUrl, String accessKey, String secretKey, String body, final HashMap<String, String> proxy) throws Exception{
 		JSONObject ret;
 
-		URL url = new URL(apiUrl);
-		HttpURLConnection conn;
+		CredentialsProvider credsProvider = new BasicCredentialsProvider();
+		credsProvider.setCredentials(AuthScope.ANY,
+				new UsernamePasswordCredentials(accessKey, secretKey));
+		HttpClientBuilder clientBuilder = HttpClientBuilder.create();
+		clientBuilder.useSystemProperties();
+
 		if (!proxy.get("server").isEmpty()) {
-			Proxy proxyServer = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxy.get("server"), Integer.parseInt(proxy.get("port"))));
-			if (!proxy.get("username").isEmpty()) {
-				Authenticator authenticator = new Authenticator() {
-					public PasswordAuthentication getPasswordAuthentication() {
-						return (new PasswordAuthentication(proxy.get("username"),
-								proxy.get("password").toCharArray()));
-					}
-				};
-				Authenticator.setDefault(authenticator);
-			}
-			conn = (HttpURLConnection) url.openConnection(proxyServer);
-		} else {
-			conn = (HttpURLConnection) url.openConnection();
-		}
-		conn.setDoOutput(true);
-		conn.setRequestMethod("POST");
-		conn.setRequestProperty("Content-Type", "application/json");
-
-		String authString = accessKey + ":" + secretKey;
-		byte[] authEncBytes = Base64.encodeBase64(authString.getBytes());
-		String authStringEnc = new String(authEncBytes);
-		conn.setRequestProperty("Authorization", "Basic " + authStringEnc);
-
-		OutputStream os = conn.getOutputStream();
-		os.write(body.getBytes());
-		os.flush();
-
-		if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
-			throw new Exception("SWAT api call return false." + conn.getResponseCode());
+			credsProvider.setCredentials(
+					new AuthScope(proxy.get("server"), Integer.parseInt(proxy.get("port"))),
+					new UsernamePasswordCredentials(proxy.get("username"), proxy.get("password")));
+			clientBuilder.setProxy(new HttpHost(proxy.get("server"), Integer.parseInt(proxy.get("port"))));
+			clientBuilder.setProxyAuthenticationStrategy(new ProxyAuthenticationStrategy());
 		}
 
-		BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
+		clientBuilder.setDefaultCredentialsProvider(credsProvider);
+		CloseableHttpClient httpclient = clientBuilder.build();
+		HttpPost request = new HttpPost(apiUrl);
+		request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
-		StringBuilder result = new StringBuilder();
-		String output;
-		while ((output = br.readLine()) != null) {
-			result.append(output);
+		HttpResponse response = httpclient.execute(request);
+
+		if (response.getStatusLine().getStatusCode() != HttpURLConnection.HTTP_OK) {
+			throw new Exception("SWAT Hub api call return false." + response.getStatusLine().getStatusCode());
 		}
 
-		conn.disconnect();
+		BufferedReader rd = new BufferedReader(
+				new InputStreamReader(response.getEntity().getContent()));
+		StringBuffer result = new StringBuffer();
+		String line;
+		while ((line = rd.readLine()) != null) {
+			result.append(line);
+		}
+		httpclient.close();
 
 		ret = new JSONObject().fromObject(result.toString());
 
