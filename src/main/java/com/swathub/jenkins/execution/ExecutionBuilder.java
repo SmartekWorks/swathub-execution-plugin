@@ -101,8 +101,20 @@ public class ExecutionBuilder extends Builder {
 		}
 
 		public JSONObject call() throws Exception {
+			String socksProxyHost = System.getProperty("socksProxyHost");
+			String socksProxyPort = System.getProperty("socksProxyPort");
+			if (socksProxyHost != null) {
+				System.setProperty("socksProxyHost", "");
+				System.setProperty("socksProxyPort", "");
+			}
+
 			Utils utils = new Utils();
 			JSONObject result = utils.apiPost(apiUrl, accessKey, secretKey, "", proxy);
+
+			if (socksProxyHost != null) {
+				System.setProperty("socksProxyHost", socksProxyHost);
+				System.setProperty("socksProxyPort", socksProxyPort);
+			}
 
 			return result;
 		}
@@ -128,8 +140,20 @@ public class ExecutionBuilder extends Builder {
 		}
 
 		public JSONObject call() throws Exception {
+			String socksProxyHost = System.getProperty("socksProxyHost");
+			String socksProxyPort = System.getProperty("socksProxyPort");
+			if (socksProxyHost != null) {
+				System.setProperty("socksProxyHost", "");
+				System.setProperty("socksProxyPort", "");
+			}
+
 			Utils utils = new Utils();
 			JSONObject result = utils.apiGet(apiUrl, accessKey, secretKey, proxy);;
+
+			if (socksProxyHost != null) {
+				System.setProperty("socksProxyHost", socksProxyHost);
+				System.setProperty("socksProxyPort", socksProxyPort);
+			}
 
 			return result;
 		}
