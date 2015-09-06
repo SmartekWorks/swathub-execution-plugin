@@ -24,4 +24,21 @@
   <f:entry title="Run Cases Sequentially" field="isSequential">
     <f:checkbox />
   </f:entry>
+  <f:advanced>
+    <f:entry title="SWAT Hub Domain" field="domain">
+      <f:textbox />
+    </f:entry>
+    <f:entry title="Workspace Owner's Username" field="ownerName">
+      <f:textbox />
+    </f:entry>
+    <f:entry title="Workspace Name" field="workspace">
+      <f:textbox />
+    </f:entry>
+    <f:entry title="Username" field="userName">
+      <f:textbox />
+    </f:entry>
+    <f:entry title="API Key" field="apiKey">
+      <f:textbox />
+    </f:entry>
+  </f:advanced>
 </j:jelly>

@@ -46,6 +46,11 @@ import java.util.HashMap;
  * @author Guo Shenyu
  */
 public class ExecutionBuilder extends Builder {
+	private final String domain;
+	private final String ownerName;
+	private final String workspace;
+	private final String userName;
+	private final String apiKey;
 	private final String testSetID;
 	private final String nodeName;
 	private final String nodeType;
@@ -54,7 +59,12 @@ public class ExecutionBuilder extends Builder {
 
 	// Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
 	@DataBoundConstructor
-	public ExecutionBuilder(String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential) {
+	public ExecutionBuilder(String domain, String ownerName, String workspace, String userName, String apiKey, String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential) {
+		this.domain = domain;
+		this.ownerName = ownerName;
+		this.workspace = workspace;
+		this.userName = userName;
+		this.apiKey = apiKey;
 		this.testSetID = testSetID;
 		this.nodeName = nodeName;
 		this.nodeType = nodeType;
@@ -65,6 +75,26 @@ public class ExecutionBuilder extends Builder {
 	/**
 	 * We'll use this from the <tt>config.jelly</tt>.
 	 */
+	public String getDomain() {
+		return domain;
+	}
+
+	public String getOwnerName() {
+		return ownerName;
+	}
+
+	public String getWorkspace() {
+		return workspace;
+	}
+
+	public String getUserName() {
+		return userName;
+	}
+
+	public String getApiKey() {
+		return apiKey;
+	}
+
 	public String getTestSetID() {
 		return testSetID;
 	}
@@ -178,11 +208,11 @@ public class ExecutionBuilder extends Builder {
 		logger.addAppender(new WriterAppender(layout, logsw));
 
 		Utils utils = new Utils();
-		String domain = getDescriptor().getDomain();
-		String ownerName = getDescriptor().getOwnerName();
-		String workspace = getDescriptor().getWorkspace();
-		String userName = getDescriptor().getUserName();
-		String apiKey = getDescriptor().getApiKey();
+		String l_domain = domain.isEmpty()?getDescriptor().getDomain():domain;
+		String l_ownerName = ownerName.isEmpty()?getDescriptor().getOwnerName():ownerName;
+		String l_workspace = workspace.isEmpty()?getDescriptor().getWorkspace():workspace;
+		String l_userName = userName.isEmpty()?getDescriptor().getUserName():userName;
+		String l_apiKey = apiKey.isEmpty()?getDescriptor().getApiKey():apiKey;
 
 		HashMap<String, String> proxy = new HashMap<String, String>();
 		proxy.put("server", getDescriptor().getProxyServer());
@@ -190,8 +220,8 @@ public class ExecutionBuilder extends Builder {
 		proxy.put("username", getDescriptor().getProxyUsername());
 		proxy.put("password", getDescriptor().getProxyPassword());
 
-		logger.info("userName:" + userName);
-		logger.info("apiKey:" + apiKey);
+		logger.info("userName:" + l_userName);
+		logger.info("apiKey:" + l_apiKey);
 		logger.info("proxy:" + proxy.toString());
 
 		JSONObject execResult;
@@ -199,12 +229,12 @@ public class ExecutionBuilder extends Builder {
 
 		try {
 			String params = "nodeName=" + URLEncoder.encode(nodeName, "UTF-8") + "&nodeType=" + nodeType + "&platform=" + URLEncoder.encode(platformCode, "UTF-8") + "&isSequential=" + (isSequential?"true":"false");
-			logger.info("post:" + domain + "/api/" + ownerName + "/" + workspace + "/sets/" + testSetID +"/run?" + params);
-			JSONObject jobResult = launcher.getChannel().call(new PostCallable(domain + "/api/" + ownerName + "/" + workspace + "/sets/" + testSetID +"/run?" + params, userName, apiKey, proxy));
+			logger.info("post:" + l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/sets/" + testSetID +"/run?" + params);
+			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/sets/" + testSetID +"/run?" + params, l_userName, l_apiKey, proxy));
 
 			while (true) {
-				logger.info("get:" + domain + "/api/" + ownerName + "/" + workspace + "/jobs/" + jobResult.getString("jobID") +"/query");
-				execResult = launcher.getChannel().call(new GetCallable(domain + "/api/" + ownerName + "/" + workspace + "/jobs/" + jobResult.getString("jobID") +"/query", userName, apiKey, proxy));
+				logger.info("get:" + l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/jobs/" + jobResult.getString("jobID") +"/query");
+				execResult = launcher.getChannel().call(new GetCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/jobs/" + jobResult.getString("jobID") +"/query", l_userName, l_apiKey, proxy));
 				JSONArray tasks = execResult.getJSONArray("tasks");
 				for (int i = 0; i < tasks.size(); i++) {
 					JSONObject task = tasks.getJSONObject(i);
@@ -282,11 +312,11 @@ public class ExecutionBuilder extends Builder {
 		 * <p>
 		 * If you don't want fields to be persisted, use <tt>transient</tt>.
 		 */
-		private String domain;
-		private String ownerName;
-		private String workspace;
-		private String userName;
-		private String apiKey;
+		private String g_domain;
+		private String g_ownerName;
+		private String g_workspace;
+		private String g_userName;
+		private String g_apiKey;
 		private String proxyServer;
 		private String proxyPort;
 		private String proxyUsername;
@@ -349,11 +379,11 @@ public class ExecutionBuilder extends Builder {
 		public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
 			// To persist global configuration information,
 			// set that to properties and call save().
-			domain = formData.getString("domain");
-			ownerName = formData.getString("ownerName");
-			workspace = formData.getString("workspace");
-			userName = formData.getString("userName");
-			apiKey = formData.getString("apiKey");
+			g_domain = formData.getString("domain");
+			g_ownerName = formData.getString("ownerName");
+			g_workspace = formData.getString("workspace");
+			g_userName = formData.getString("userName");
+			g_apiKey = formData.getString("apiKey");
 			proxyServer = formData.getString("proxyServer");
 			proxyPort = formData.getString("proxyPort");
 			proxyPort = proxyPort.isEmpty() ? "80" : proxyPort;
@@ -377,23 +407,23 @@ public class ExecutionBuilder extends Builder {
 		 * the initial state of the checkbox by the naming convention.
 		 */
 		public String getDomain() {
-			return domain;
+			return g_domain;
 		}
 
 		public String getOwnerName() {
-			return ownerName;
+			return g_ownerName;
 		}
 
 		public String getWorkspace() {
-			return workspace;
+			return g_workspace;
 		}
 
 		public String getUserName() {
-			return userName;
+			return g_userName;
 		}
 
 		public String getApiKey() {
-			return apiKey;
+			return g_apiKey;
 		}
 
 		public String getProxyServer() {
