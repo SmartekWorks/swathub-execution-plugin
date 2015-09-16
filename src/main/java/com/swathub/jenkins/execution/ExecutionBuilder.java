@@ -56,10 +56,11 @@ public class ExecutionBuilder extends Builder {
 	private final String nodeType;
 	private final String platformCode;
 	private final boolean isSequential;
+	private final String tags;
 
 	// Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
 	@DataBoundConstructor
-	public ExecutionBuilder(String domain, String ownerName, String workspace, String userName, String apiKey, String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential) {
+	public ExecutionBuilder(String domain, String ownerName, String workspace, String userName, String apiKey, String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential, String tags) {
 		this.domain = domain;
 		this.ownerName = ownerName;
 		this.workspace = workspace;
@@ -70,6 +71,7 @@ public class ExecutionBuilder extends Builder {
 		this.nodeType = nodeType;
 		this.platformCode = platformCode;
 		this.isSequential = isSequential;
+		this.tags = tags;
 	}
 
 	/**
@@ -113,6 +115,10 @@ public class ExecutionBuilder extends Builder {
 
 	public boolean getIsSequential() {
 		return isSequential;
+	}
+
+	public String getTags() {
+		return tags;
 	}
 
 	private static class PostCallable implements Callable<JSONObject, Exception> {
@@ -228,7 +234,7 @@ public class ExecutionBuilder extends Builder {
 		ArrayList<String> completedList = new ArrayList<String>();
 
 		try {
-			String params = "nodeName=" + URLEncoder.encode(nodeName, "UTF-8") + "&nodeType=" + nodeType + "&platform=" + URLEncoder.encode(platformCode, "UTF-8") + "&isSequential=" + (isSequential?"true":"false");
+			String params = "nodeName=" + URLEncoder.encode(nodeName, "UTF-8") + "&nodeType=" + nodeType + "&platform=" + URLEncoder.encode(platformCode, "UTF-8") + "&isSequential=" + (isSequential?"true":"false") + "&tags=" + (tags!=null?URLEncoder.encode(tags, "UTF-8"):"");
 			logger.info("post:" + l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/sets/" + testSetID +"/run?" + params);
 			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/sets/" + testSetID +"/run?" + params, l_userName, l_apiKey, proxy));
 

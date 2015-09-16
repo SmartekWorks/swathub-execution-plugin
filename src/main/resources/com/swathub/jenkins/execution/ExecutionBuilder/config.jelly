@@ -24,6 +24,9 @@
   <f:entry title="Run Cases Sequentially" field="isSequential">
     <f:checkbox />
   </f:entry>
+  <f:entry title="Tags" field="tags">
+    <f:textbox />
+  </f:entry>
   <f:advanced>
     <f:entry title="SWAT Hub Domain" field="domain">
       <f:textbox />
