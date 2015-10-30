@@ -12,7 +12,6 @@ import hudson.tasks.Builder;
 import hudson.util.FormValidation;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
-import org.apache.log4j.*;
 import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -56,11 +55,12 @@ public class ExecutionBuilder extends Builder {
 	private final String nodeType;
 	private final String platformCode;
 	private final boolean isSequential;
+	private final String testServer;
 	private final String tags;
 
 	// Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
 	@DataBoundConstructor
-	public ExecutionBuilder(String domain, String ownerName, String workspace, String userName, String apiKey, String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential, String tags) {
+	public ExecutionBuilder(String domain, String ownerName, String workspace, String userName, String apiKey, String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential, String testServer, String tags) {
 		this.domain = domain;
 		this.ownerName = ownerName;
 		this.workspace = workspace;
@@ -71,6 +71,7 @@ public class ExecutionBuilder extends Builder {
 		this.nodeType = nodeType;
 		this.platformCode = platformCode;
 		this.isSequential = isSequential;
+		this.testServer = testServer;
 		this.tags = tags;
 	}
 
@@ -117,6 +118,10 @@ public class ExecutionBuilder extends Builder {
 		return isSequential;
 	}
 
+	public String getTestServer() {
+		return testServer;
+	}
+
 	public String getTags() {
 		return tags;
 	}
@@ -137,8 +142,20 @@ public class ExecutionBuilder extends Builder {
 		}
 
 		public JSONObject call() throws Exception {
+			String socksProxyHost = System.getProperty("socksProxyHost");
+			String socksProxyPort = System.getProperty("socksProxyPort");
+			if (socksProxyHost != null) {
+				System.setProperty("socksProxyHost", "");
+				System.setProperty("socksProxyPort", "");
+			}
+
 			Utils utils = new Utils();
 			JSONObject result = utils.apiPost(apiUrl, accessKey, secretKey, "", proxy);
+
+			if (socksProxyHost != null) {
+				System.setProperty("socksProxyHost", socksProxyHost);
+				System.setProperty("socksProxyPort", socksProxyPort);
+			}
 
 			return result;
 		}
@@ -164,8 +181,20 @@ public class ExecutionBuilder extends Builder {
 		}
 
 		public JSONObject call() throws Exception {
+			String socksProxyHost = System.getProperty("socksProxyHost");
+			String socksProxyPort = System.getProperty("socksProxyPort");
+			if (socksProxyHost != null) {
+				System.setProperty("socksProxyHost", "");
+				System.setProperty("socksProxyPort", "");
+			}
+
 			Utils utils = new Utils();
 			JSONObject result = utils.apiGet(apiUrl, accessKey, secretKey, proxy);;
+
+			if (socksProxyHost != null) {
+				System.setProperty("socksProxyHost", socksProxyHost);
+				System.setProperty("socksProxyPort", socksProxyPort);
+			}
 
 			return result;
 		}
@@ -182,12 +211,6 @@ public class ExecutionBuilder extends Builder {
 		// Since this is a dummy, we just say 'hello world' and call that a build.
 
 		boolean result = true;
-		Logger logger = LogManager.getLogger("logger");
-
-		PatternLayout layout = new PatternLayout("%d %-5p - %m%n");
-		StringWriter logsw = new StringWriter();
-		logger.setLevel(Level.INFO);
-		logger.addAppender(new WriterAppender(layout, logsw));
 
 		Utils utils = new Utils();
 		String l_domain = domain.isEmpty()?getDescriptor().getDomain():domain;
@@ -202,20 +225,15 @@ public class ExecutionBuilder extends Builder {
 		proxy.put("username", getDescriptor().getProxyUsername());
 		proxy.put("password", getDescriptor().getProxyPassword());
 
-		logger.info("userName:" + l_userName);
-		logger.info("apiKey:" + l_apiKey);
-		logger.info("proxy:" + proxy.toString());
-
 		JSONObject execResult;
 		ArrayList<String> completedList = new ArrayList<String>();
 
 		try {
-			String params = "nodeName=" + URLEncoder.encode(nodeName, "UTF-8") + "&nodeType=" + nodeType + "&platform=" + URLEncoder.encode(platformCode, "UTF-8") + "&isSequential=" + (isSequential?"true":"false") + "&tags=" + (tags!=null?URLEncoder.encode(tags, "UTF-8"):"");
-			logger.info("post:" + l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/sets/" + testSetID +"/run?" + params);
-			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/sets/" + testSetID +"/run?" + params, l_userName, l_apiKey, proxy));
+			String params = testSetID.isEmpty()?"":("setID=" + testSetID + "&");
+			params += ("nodeName=" + URLEncoder.encode(nodeName, "UTF-8") + "&nodeType=" + nodeType + "&platform=" + URLEncoder.encode(platformCode, "UTF-8") + "&isSequential=" + (isSequential?"true":"false") + "&testServer=" + (testServer!=null?testServer:"") + "&tags=" + (tags!=null?URLEncoder.encode(tags, "UTF-8"):""));
+			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/run?" + params, l_userName, l_apiKey, proxy));
 
 			while (true) {
-				logger.info("get:" + l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/jobs/" + jobResult.getString("jobID") +"/query");
 				execResult = launcher.getChannel().call(new GetCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/jobs/" + jobResult.getString("jobID") +"/query", l_userName, l_apiKey, proxy));
 				JSONArray tasks = execResult.getJSONArray("tasks");
 				for (int i = 0; i < tasks.size(); i++) {
@@ -247,24 +265,9 @@ public class ExecutionBuilder extends Builder {
 			utils.createXmlFile(new FilePath(build.getWorkspace(), "swat_result.xml"), execResult);
 		} catch (Exception e) {
 			listener.getLogger().println(e.getMessage());
-
-			StringWriter sw = new StringWriter();
-			PrintWriter spw = new PrintWriter(sw);
-			e.printStackTrace(spw);
-			logger.error(sw.toString());
-			spw.close();
 			result = false;
 		}
 
-		try {
-			FilePath logFile = new FilePath(build.getWorkspace(), "swathub.log");
-			PrintWriter fpw = new PrintWriter(logFile.write());
-			fpw.println(logsw.toString());
-			logsw.close();
-			fpw.close();
-		} catch (Exception fe) {
-
-		}
 		// This also shows how you can consult the global configuration of the builder
 		return result;
 	}
@@ -324,13 +327,6 @@ public class ExecutionBuilder extends Builder {
 		 *      prevent the form from being saved. It just means that a message
 		 *      will be displayed to the user.
 		 */
-		public FormValidation doCheckTestSetID(@QueryParameter String value)
-				throws IOException, ServletException {
-			if (value.length() == 0)
-				return FormValidation.error("Please input the test set ID");
-			return FormValidation.ok();
-		}
-
 		public FormValidation doCheckNodeType(@QueryParameter String value)
 				throws IOException, ServletException {
 			if (value.length() == 0)
