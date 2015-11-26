@@ -57,11 +57,12 @@ public class ExecutionBuilder extends Builder {
 	private final String platformCode;
 	private final boolean isSequential;
 	private final String testServer;
+	private final String apiServer;
 	private final String tags;
 
 	// Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
 	@DataBoundConstructor
-	public ExecutionBuilder(String domain, String ownerName, String workspace, String userName, String apiKey, String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential, String testServer, String tags) {
+	public ExecutionBuilder(String domain, String ownerName, String workspace, String userName, String apiKey, String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential, String testServer, String apiServer, String tags) {
 		this.domain = domain;
 		this.ownerName = ownerName;
 		this.workspace = workspace;
@@ -73,6 +74,7 @@ public class ExecutionBuilder extends Builder {
 		this.platformCode = platformCode;
 		this.isSequential = isSequential;
 		this.testServer = testServer;
+		this.apiServer = apiServer;
 		this.tags = tags;
 	}
 
@@ -121,6 +123,10 @@ public class ExecutionBuilder extends Builder {
 
 	public String getTestServer() {
 		return testServer;
+	}
+
+	public String getApiServer() {
+		return apiServer;
 	}
 
 	public String getTags() {
@@ -241,7 +247,7 @@ public class ExecutionBuilder extends Builder {
 
 		try {
 			String params = testSetID.isEmpty()?"":("setID=" + testSetID + "&");
-			params += ("nodeName=" + URLEncoder.encode(nodeName, "UTF-8") + "&nodeType=" + nodeType + "&platform=" + URLEncoder.encode(platformCode, "UTF-8") + "&isSequential=" + (isSequential?"true":"false") + "&testServer=" + (testServer!=null?testServer:"") + "&tags=" + (tags!=null?URLEncoder.encode(tags, "UTF-8"):""));
+			params += ("nodeName=" + URLEncoder.encode(nodeName, "UTF-8") + "&nodeType=" + nodeType + "&platform=" + URLEncoder.encode(platformCode, "UTF-8") + "&isSequential=" + (isSequential?"true":"false") + "&testServer=" + (testServer!=null?testServer:"") + "&apiServer=" + (apiServer!=null?apiServer:"") + "&tags=" + (tags!=null?URLEncoder.encode(tags, "UTF-8"):""));
 			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/run?" + params, l_userName, l_apiKey, proxy));
 
 			while (true) {
