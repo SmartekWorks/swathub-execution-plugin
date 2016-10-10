@@ -33,6 +33,9 @@
   <f:entry title="Scenario Tags" field="tags">
     <f:textbox />
   </f:entry>
+  <f:entry title="Execution Settings" field="execSettings">
+    <f:textbox />
+  </f:entry>
   <f:advanced>
     <f:entry title="SWAT Hub Domain" field="domain">
       <f:textbox />
