@@ -12,6 +12,7 @@ import hudson.tasks.Builder;
 import hudson.util.FormValidation;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.apache.log4j.*;
 import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -59,10 +60,25 @@ public class ExecutionBuilder extends Builder {
 	private final String apiServer;
 	private final String tags;
 	private final String execSettings;
+	private final boolean isAddIssue;
 
 	// Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
 	@DataBoundConstructor
-	public ExecutionBuilder(String domain, String ownerName, String workspace, String userName, String apiKey, String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential, String testServer, String apiServer, String tags, String execSettings) {
+	public ExecutionBuilder(String domain, 
+		String ownerName, 
+		String workspace, 
+		String userName, 
+		String apiKey, 
+		String testSetID, 
+		String nodeName, 
+		String nodeType, 
+		String platformCode, 
+		boolean isSequential, 
+		String testServer, 
+		String apiServer, 
+		String tags, 
+		String execSettings, 
+		boolean isAddIssue) {
 		this.domain = domain;
 		this.ownerName = ownerName;
 		this.workspace = workspace;
@@ -77,6 +93,7 @@ public class ExecutionBuilder extends Builder {
 		this.apiServer = apiServer;
 		this.tags = tags;
 		this.execSettings = execSettings;
+		this.isAddIssue = isAddIssue;
 	}
 
 	/**
@@ -136,6 +153,10 @@ public class ExecutionBuilder extends Builder {
 
 	public String getExecSettings() {
 		return execSettings;
+	}
+
+	public boolean getIsAddIssue() {
+		return isAddIssue;
 	}
 
 	private static class PostCallable implements Callable<JSONObject, Exception> {
@@ -223,6 +244,12 @@ public class ExecutionBuilder extends Builder {
 		// Since this is a dummy, we just say 'hello world' and call that a build.
 
 		boolean result = true;
+		Logger logger = LogManager.getLogger("logger");
+
+		PatternLayout layout = new PatternLayout("%d %-5p - %m%n");
+		StringWriter logsw = new StringWriter();
+		logger.setLevel(Level.INFO);
+		logger.addAppender(new WriterAppender(layout, logsw));
 
 		Utils utils = new Utils();
 		String l_domain = domain.isEmpty()?getDescriptor().getDomain():domain;
@@ -237,6 +264,10 @@ public class ExecutionBuilder extends Builder {
 		proxy.put("username", getDescriptor().getProxyUsername());
 		proxy.put("password", getDescriptor().getProxyPassword());
 
+		logger.info("userName:" + l_userName);
+		logger.info("apiKey:" + l_apiKey);
+		logger.info("proxy:" + proxy.toString());
+
 		JSONObject execResult;
 		ArrayList<String> completedList = new ArrayList<String>();
 
@@ -248,6 +279,7 @@ public class ExecutionBuilder extends Builder {
 			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/run?" + params, l_userName, l_apiKey, proxy));
 
 			while (true) {
+				logger.info("get:" + l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/jobs/" + jobResult.getString("jobID") +"/query");
 				execResult = launcher.getChannel().call(new GetCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/jobs/" + jobResult.getString("jobID") +"/query", l_userName, l_apiKey, proxy));
 				JSONArray tasks = execResult.getJSONArray("tasks");
 				for (int i = 0; i < tasks.size(); i++) {
@@ -265,6 +297,16 @@ public class ExecutionBuilder extends Builder {
 									" :   " + task.getString("status") + " (" + completedList.size() + "/" +
 									tasks.size() + ")";
 							listener.getLogger().println(message);
+
+							if (status.equals("failed") && task.has("error")) {
+								String issueParams = ("content=" + URLEncoder.encode(task.getString("error"), "UTF-8")) + "&type=issue";
+								launcher.getChannel().call(
+									new PostCallable(
+										l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/results/" + 
+										task.getString("resultID") + "/comments?" + issueParams, l_userName, l_apiKey, proxy
+									)
+								);
+							}
 						}
 					}
 				}
@@ -279,9 +321,24 @@ public class ExecutionBuilder extends Builder {
 			utils.createXmlFile(new FilePath(build.getWorkspace(), "swat_result.xml"), execResult);
 		} catch (Exception e) {
 			listener.getLogger().println(e.getMessage());
+
+			StringWriter sw = new StringWriter();
+			PrintWriter spw = new PrintWriter(sw);
+			e.printStackTrace(spw);
+			logger.error(sw.toString());
+			spw.close();
 			result = false;
 		}
 
+		try {
+			FilePath logFile = new FilePath(build.getWorkspace(), "swathub.log");
+			PrintWriter fpw = new PrintWriter(logFile.write());
+			fpw.println(logsw.toString());
+			logsw.close();
+			fpw.close();
+		} catch (Exception fe) {
+
+		}
 		// This also shows how you can consult the global configuration of the builder
 		return result;
 	}

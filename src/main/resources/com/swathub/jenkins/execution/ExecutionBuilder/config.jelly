@@ -36,6 +36,9 @@
   <f:entry title="Execution Settings" field="execSettings">
     <f:textbox />
   </f:entry>
+  <f:entry title="Create Issue on Error" field="isAddIssue">
+    <f:checkbox />
+  </f:entry>
   <f:advanced>
     <f:entry title="SWAT Hub Domain" field="domain">
       <f:textbox />
