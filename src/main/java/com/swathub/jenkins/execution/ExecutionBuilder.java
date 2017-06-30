@@ -60,10 +60,25 @@ public class ExecutionBuilder extends Builder {
 	private final String apiServer;
 	private final String tags;
 	private final String execSettings;
+	private final boolean isAddIssue;
 
 	// Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
 	@DataBoundConstructor
-	public ExecutionBuilder(String domain, String ownerName, String workspace, String userName, String apiKey, String testSetID, String nodeName, String nodeType, String platformCode, boolean isSequential, String testServer, String apiServer, String tags, String execSettings) {
+	public ExecutionBuilder(String domain, 
+		String ownerName, 
+		String workspace, 
+		String userName, 
+		String apiKey, 
+		String testSetID, 
+		String nodeName, 
+		String nodeType, 
+		String platformCode, 
+		boolean isSequential, 
+		String testServer, 
+		String apiServer, 
+		String tags, 
+		String execSettings, 
+		boolean isAddIssue) {
 		this.domain = domain;
 		this.ownerName = ownerName;
 		this.workspace = workspace;
@@ -78,6 +93,7 @@ public class ExecutionBuilder extends Builder {
 		this.apiServer = apiServer;
 		this.tags = tags;
 		this.execSettings = execSettings;
+		this.isAddIssue = isAddIssue;
 	}
 
 	/**
@@ -137,6 +153,10 @@ public class ExecutionBuilder extends Builder {
 
 	public String getExecSettings() {
 		return execSettings;
+	}
+
+	public boolean getIsAddIssue() {
+		return isAddIssue;
 	}
 
 	private static class PostCallable implements Callable<JSONObject, Exception> {
@@ -277,6 +297,16 @@ public class ExecutionBuilder extends Builder {
 									" :   " + task.getString("status") + " (" + completedList.size() + "/" +
 									tasks.size() + ")";
 							listener.getLogger().println(message);
+
+							if (status.equals("failed") && task.has("error")) {
+								String issueParams = ("content=" + URLEncoder.encode(task.getString("error"), "UTF-8")) + "&type=issue";
+								launcher.getChannel().call(
+									new PostCallable(
+										l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/results/" + 
+										task.getString("resultID") + "/comments?" + issueParams, l_userName, l_apiKey, proxy
+									)
+								);
+							}
 						}
 					}
 				}
