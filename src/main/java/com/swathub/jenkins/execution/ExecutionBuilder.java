@@ -249,7 +249,7 @@ public class ExecutionBuilder extends Builder {
 		try {
 			envVars = build.getEnvironment(listener);
 		} catch (Exception e) {
-			logger.warn("Can not get jenkins environments: " + e.getMessage());
+			listener.getLogger().println("Can not get jenkins environments: " + e.getMessage());
 		}
 
 		Utils utils = new Utils();
@@ -278,7 +278,6 @@ public class ExecutionBuilder extends Builder {
 			params += ("nodeName=" + URLEncoder.encode(utils.transform(nodeName, envVars), "UTF-8") + "&nodeType=" + utils.transform(nodeType, envVars) + "&platform=" + URLEncoder.encode(utils.transform(platformCode, envVars), "UTF-8") +
 				"&isSequential=" + (isSequential?"true":"false") + "&testServer=" + (testServer!=null?utils.transform(testServer, envVars):"") + "&apiServer=" + (apiServer!=null?utils.transform(apiServer, envVars):"") +
 				"&tags=" + (tags!=null?URLEncoder.encode(utils.transform(tags, envVars), "UTF-8"):"") + "&execSettings=" + (execSettings!=null?URLEncoder.encode(utils.transform(execSettings, envVars), "UTF-8"):""));
-			listener.getLogger().println(params);
 			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/run?" + params, l_userName, l_apiKey, proxy));
 
 			while (true) {
