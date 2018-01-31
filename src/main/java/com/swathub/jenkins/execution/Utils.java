@@ -1,5 +1,6 @@
 package com.swathub.jenkins.execution;
 
+import hudson.EnvVars;
 import hudson.FilePath;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -22,6 +23,8 @@ import javax.xml.stream.XMLStreamWriter;
 import java.io.*;
 import java.net.*;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Utils {
 	public JSONObject apiGet(String apiUrl, String accessKey, String secretKey, final HashMap<String, String> proxy) throws Exception{
@@ -115,11 +118,11 @@ public class Utils {
 			out.writeStartDocument();
 			out.writeStartElement("testsuites");
 			out.writeAttribute("tests", "1");
-			out.writeAttribute("name", execResult.getString("name"));
+			out.writeAttribute("name", "Report");
 
 			out.writeStartElement("testsuite");
 			out.writeAttribute("tests", "1");
-			out.writeAttribute("name", "Test Set");
+			out.writeAttribute("name", execResult.getString("name"));
 
 			JSONArray tasks = execResult.getJSONArray("tasks");
 			for (int i = 0; i < tasks.size(); i++) {
@@ -146,5 +149,15 @@ public class Utils {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	public String transform(String origin, EnvVars envVars) {
+		Pattern p = Pattern.compile("\\$(\\w+)");
+		Matcher m = p.matcher(origin);
+		while (m.find()) {
+			origin = origin.replace(m.group(), envVars.get(m.group(1), ""));
+		}
+
+		return origin;
 	}
 }
