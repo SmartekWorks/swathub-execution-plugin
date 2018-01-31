@@ -1,5 +1,6 @@
 package com.swathub.jenkins.execution;
 
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -251,18 +252,30 @@ public class ExecutionBuilder extends Builder {
 		logger.setLevel(Level.INFO);
 		logger.addAppender(new WriterAppender(layout, logsw));
 
+		EnvVars envVars = new EnvVars();
+		try {
+			envVars = build.getEnvironment(listener);
+		} catch (Exception e) {
+			logger.warn("Can not get jenkins environments: " + e.getMessage());
+		}
+
 		Utils utils = new Utils();
 		String l_domain = domain.isEmpty()?getDescriptor().getDomain():domain;
+		l_domain = utils.transform(l_domain, envVars);
 		String l_ownerName = ownerName.isEmpty()?getDescriptor().getOwnerName():ownerName;
+		l_ownerName = utils.transform(l_ownerName, envVars);
 		String l_workspace = workspace.isEmpty()?getDescriptor().getWorkspace():workspace;
+		l_workspace = utils.transform(l_workspace, envVars);
 		String l_userName = userName.isEmpty()?getDescriptor().getUserName():userName;
+		l_userName = utils.transform(l_userName, envVars);
 		String l_apiKey = apiKey.isEmpty()?getDescriptor().getApiKey():apiKey;
+		l_apiKey = utils.transform(l_apiKey, envVars);
 
 		HashMap<String, String> proxy = new HashMap<String, String>();
-		proxy.put("server", getDescriptor().getProxyServer());
-		proxy.put("port", getDescriptor().getProxyPort());
-		proxy.put("username", getDescriptor().getProxyUsername());
-		proxy.put("password", getDescriptor().getProxyPassword());
+		proxy.put("server", utils.transform(getDescriptor().getProxyServer(), envVars));
+		proxy.put("port", utils.transform(getDescriptor().getProxyPort(), envVars));
+		proxy.put("username", utils.transform(getDescriptor().getProxyUsername(), envVars));
+		proxy.put("password", utils.transform(getDescriptor().getProxyPassword(), envVars));
 
 		logger.info("userName:" + l_userName);
 		logger.info("apiKey:" + l_apiKey);
@@ -272,10 +285,11 @@ public class ExecutionBuilder extends Builder {
 		ArrayList<String> completedList = new ArrayList<String>();
 
 		try {
-			String params = testSetID.isEmpty()?"":("setID=" + testSetID + "&");
-			params += ("nodeName=" + URLEncoder.encode(nodeName, "UTF-8") + "&nodeType=" + nodeType + "&platform=" + URLEncoder.encode(platformCode, "UTF-8") + 
-				"&isSequential=" + (isSequential?"true":"false") + "&testServer=" + (testServer!=null?testServer:"") + "&apiServer=" + (apiServer!=null?apiServer:"") + 
-				"&tags=" + (tags!=null?URLEncoder.encode(tags, "UTF-8"):"") + "&execSettings=" + (execSettings!=null?URLEncoder.encode(execSettings, "UTF-8"):""));
+			String params = testSetID.isEmpty()?"":("setID=" + utils.transform(testSetID, envVars) + "&");
+			params += ("nodeName=" + URLEncoder.encode(utils.transform(nodeName, envVars), "UTF-8") + "&nodeType=" + utils.transform(nodeType, envVars) + "&platform=" + URLEncoder.encode(utils.transform(platformCode, envVars), "UTF-8") +
+				"&isSequential=" + (isSequential?"true":"false") + "&testServer=" + (testServer!=null?utils.transform(testServer, envVars):"") + "&apiServer=" + (apiServer!=null?utils.transform(apiServer, envVars):"") +
+				"&tags=" + (tags!=null?URLEncoder.encode(utils.transform(tags, envVars), "UTF-8"):"") + "&execSettings=" + (execSettings!=null?URLEncoder.encode(utils.transform(execSettings, envVars), "UTF-8"):""));
+			listener.getLogger().println(params);
 			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/run?" + params, l_userName, l_apiKey, proxy));
 
 			while (true) {
