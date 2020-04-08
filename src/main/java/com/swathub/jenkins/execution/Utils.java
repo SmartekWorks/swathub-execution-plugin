@@ -152,6 +152,9 @@ public class Utils {
 	}
 
 	public String transform(String origin, EnvVars envVars) {
+		if (origin == null) {
+			origin = "";
+		}
 		Pattern p = Pattern.compile("\\$(\\w+)");
 		Matcher m = p.matcher(origin);
 		while (m.find()) {

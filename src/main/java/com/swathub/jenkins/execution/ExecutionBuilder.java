@@ -52,14 +52,13 @@ public class ExecutionBuilder extends Builder {
 	private final String userName;
 	private final String apiKey;
 	private final String testSetID;
-	private final String nodeName;
-	private final String nodeType;
-	private final String platformCode;
+	private final String robot;
+	private final String browserCode;
 	private final boolean isSequential;
 	private final String testServer;
 	private final String apiServer;
 	private final String tags;
-	private final String execSettings;
+	private final String stepOptions;
 	private final boolean isAddIssue;
 
 	// Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
@@ -70,14 +69,13 @@ public class ExecutionBuilder extends Builder {
 		String userName, 
 		String apiKey, 
 		String testSetID, 
-		String nodeName, 
-		String nodeType, 
-		String platformCode, 
+		String robot, 
+		String browserCode, 
 		boolean isSequential, 
 		String testServer, 
 		String apiServer, 
 		String tags, 
-		String execSettings, 
+		String stepOptions, 
 		boolean isAddIssue) {
 		this.domain = domain;
 		this.ownerName = ownerName;
@@ -85,14 +83,13 @@ public class ExecutionBuilder extends Builder {
 		this.userName = userName;
 		this.apiKey = apiKey;
 		this.testSetID = testSetID;
-		this.nodeName = nodeName;
-		this.nodeType = nodeType;
-		this.platformCode = platformCode;
+		this.robot = robot;
+		this.browserCode = browserCode;
 		this.isSequential = isSequential;
 		this.testServer = testServer;
 		this.apiServer = apiServer;
 		this.tags = tags;
-		this.execSettings = execSettings;
+		this.stepOptions = stepOptions;
 		this.isAddIssue = isAddIssue;
 	}
 
@@ -123,16 +120,12 @@ public class ExecutionBuilder extends Builder {
 		return testSetID;
 	}
 
-	public String getNodeName() {
-		return nodeName;
+	public String getRobot() {
+		return robot;
 	}
 
-	public String getNodeType() {
-		return nodeType;
-	}
-
-	public String getPlatformCode() {
-		return platformCode;
+	public String getBrowserCode() {
+		return browserCode;
 	}
 
 	public boolean getIsSequential() {
@@ -151,8 +144,8 @@ public class ExecutionBuilder extends Builder {
 		return tags;
 	}
 
-	public String getExecSettings() {
-		return execSettings;
+	public String getStepOptions() {
+		return stepOptions;
 	}
 
 	public boolean getIsAddIssue() {
@@ -275,9 +268,9 @@ public class ExecutionBuilder extends Builder {
 
 		try {
 			String params = testSetID.isEmpty()?"":("setID=" + utils.transform(testSetID, envVars) + "&");
-			params += ("nodeName=" + URLEncoder.encode(utils.transform(nodeName, envVars), "UTF-8") + "&nodeType=" + utils.transform(nodeType, envVars) + "&platform=" + URLEncoder.encode(utils.transform(platformCode, envVars), "UTF-8") +
+			params += ("robot=" + URLEncoder.encode(utils.transform(robot, envVars), "UTF-8") + "&browser=" + URLEncoder.encode(utils.transform(browserCode, envVars), "UTF-8") +
 				"&isSequential=" + (isSequential?"true":"false") + "&testServer=" + (testServer!=null?utils.transform(testServer, envVars):"") + "&apiServer=" + (apiServer!=null?utils.transform(apiServer, envVars):"") +
-				"&tags=" + (tags!=null?URLEncoder.encode(utils.transform(tags, envVars), "UTF-8"):"") + "&execSettings=" + (execSettings!=null?URLEncoder.encode(utils.transform(execSettings, envVars), "UTF-8"):""));
+				"&tags=" + (tags!=null?URLEncoder.encode(utils.transform(tags, envVars), "UTF-8"):"") + "&stepOptions=" + (stepOptions!=null?URLEncoder.encode(utils.transform(stepOptions, envVars), "UTF-8"):""));
 			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/run?" + params, l_userName, l_apiKey, proxy));
 
 			while (true) {
@@ -299,7 +292,7 @@ public class ExecutionBuilder extends Builder {
 									tasks.size() + ")";
 							listener.getLogger().println(message);
 
-							if (status.equals("failed") && task.has("error")) {
+							if (status.equals("failed") && task.has("error") && isAddIssue) {
 								String issueParams = ("content=" + URLEncoder.encode(task.getString("error"), "UTF-8")) + "&type=issue";
 								launcher.getChannel().call(
 									new PostCallable(
@@ -372,32 +365,6 @@ public class ExecutionBuilder extends Builder {
 			load();
 		}
 
-		/**
-		 * Performs on-the-fly validation of the form field 'name'.
-		 *
-		 * @param value
-		 *      This parameter receives the value that the user has typed.
-		 * @return
-		 *      Indicates the outcome of the validation. This is sent to the browser.
-		 *      <p>
-		 *      Note that returning {@link hudson.util.FormValidation#error(String)} does not
-		 *      prevent the form from being saved. It just means that a message
-		 *      will be displayed to the user.
-		 */
-		public FormValidation doCheckNodeType(@QueryParameter String value)
-				throws IOException, ServletException {
-			if (value.length() == 0)
-				return FormValidation.error("Please input the node type");
-			return FormValidation.ok();
-		}
-
-		public FormValidation doCheckPlatformCode(@QueryParameter String value)
-				throws IOException, ServletException {
-			if (value.length() == 0)
-				return FormValidation.error("Please input the platform code");
-			return FormValidation.ok();
-		}
-
 		public boolean isApplicable(Class<? extends AbstractProject> aClass) {
 			// Indicates that this builder can be used with all kinds of project types
 			return true;
@@ -407,7 +374,7 @@ public class ExecutionBuilder extends Builder {
 		 * This human readable name is used in the configuration screen.
 		 */
 		public String getDisplayName() {
-			return "SWAT Execution";
+			return "SWATHub Execution";
 		}
 
 		@Override

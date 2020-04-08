@@ -12,13 +12,10 @@
   <f:entry title="Test Set ID" field="testSetID">
     <f:textbox />
   </f:entry>
-  <f:entry title="Execution Node Name" field="nodeName">
+  <f:entry title="Robot Name" field="robot">
     <f:textbox />
   </f:entry>
-  <f:entry title="Execution Node Type" field="nodeType">
-    <f:textbox />
-  </f:entry>
-  <f:entry title="Platform Code" field="platformCode">
+  <f:entry title="Browser Code" field="browser">
     <f:textbox />
   </f:entry>
   <f:entry title="Run Cases Sequentially" field="isSequential">
@@ -33,8 +30,8 @@
   <f:entry title="Scenario Tags" field="tags">
     <f:textbox />
   </f:entry>
-  <f:entry title="Execution Settings" field="execSettings">
-    <f:textbox />
+  <f:entry title="Step Options" field="stepOptions">
+    <f:textbox default="{}" />
   </f:entry>
   <f:entry title="Create Issue on Error" field="isAddIssue">
     <f:checkbox />
