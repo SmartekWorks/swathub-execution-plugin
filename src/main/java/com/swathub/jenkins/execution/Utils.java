@@ -27,9 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Utils {
-	public JSONObject apiGet(String apiUrl, String accessKey, String secretKey, final HashMap<String, String> proxy) throws Exception{
-		JSONObject ret;
-
+	public String apiGet(String apiUrl, String accessKey, String secretKey, final HashMap<String, String> proxy) throws Exception{
 		CredentialsProvider credsProvider = new BasicCredentialsProvider();
 		credsProvider.setCredentials(AuthScope.ANY,
 				new UsernamePasswordCredentials(accessKey, secretKey));
@@ -63,14 +61,10 @@ public class Utils {
 		}
 		httpclient.close();
 
-		ret = new JSONObject().fromObject(result.toString());
-
-		return ret;
+		return result.toString();
 	}
 
-	public JSONObject apiPost(String apiUrl, String accessKey, String secretKey, String body, final HashMap<String, String> proxy) throws Exception{
-		JSONObject ret;
-
+	public String apiPost(String apiUrl, String accessKey, String secretKey, String body, final HashMap<String, String> proxy) throws Exception{
 		CredentialsProvider credsProvider = new BasicCredentialsProvider();
 		credsProvider.setCredentials(AuthScope.ANY,
 				new UsernamePasswordCredentials(accessKey, secretKey));
@@ -105,9 +99,7 @@ public class Utils {
 		}
 		httpclient.close();
 
-		ret = new JSONObject().fromObject(result.toString());
-
-		return ret;
+		return result.toString();
 	}
 
 	public void createXmlFile(FilePath fp, JSONObject execResult) {

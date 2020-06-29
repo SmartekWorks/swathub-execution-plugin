@@ -152,7 +152,7 @@ public class ExecutionBuilder extends Builder {
 		return isAddIssue;
 	}
 
-	private static class PostCallable implements Callable<JSONObject, Exception> {
+	private static class PostCallable implements Callable<String, Exception> {
 		private static final long serialVersionUID = 1L;
 
 		private String apiUrl;
@@ -167,7 +167,7 @@ public class ExecutionBuilder extends Builder {
 			this.proxy = proxy;
 		}
 
-		public JSONObject call() throws Exception {
+		public String call() throws Exception {
 			String socksProxyHost = System.getProperty("socksProxyHost");
 			String socksProxyPort = System.getProperty("socksProxyPort");
 			if (socksProxyHost != null) {
@@ -176,7 +176,7 @@ public class ExecutionBuilder extends Builder {
 			}
 
 			Utils utils = new Utils();
-			JSONObject result = utils.apiPost(apiUrl, accessKey, secretKey, "", proxy);
+			String result = utils.apiPost(apiUrl, accessKey, secretKey, "", proxy);
 
 			if (socksProxyHost != null) {
 				System.setProperty("socksProxyHost", socksProxyHost);
@@ -191,7 +191,7 @@ public class ExecutionBuilder extends Builder {
 		}
 	}
 
-	private static class GetCallable implements Callable<JSONObject, Exception> {
+	private static class GetCallable implements Callable<String, Exception> {
 		private static final long serialVersionUID = 1L;
 
 		private String apiUrl;
@@ -206,7 +206,7 @@ public class ExecutionBuilder extends Builder {
 			this.proxy = proxy;
 		}
 
-		public JSONObject call() throws Exception {
+		public String call() throws Exception {
 			String socksProxyHost = System.getProperty("socksProxyHost");
 			String socksProxyPort = System.getProperty("socksProxyPort");
 			if (socksProxyHost != null) {
@@ -215,7 +215,7 @@ public class ExecutionBuilder extends Builder {
 			}
 
 			Utils utils = new Utils();
-			JSONObject result = utils.apiGet(apiUrl, accessKey, secretKey, proxy);;
+			String result = utils.apiGet(apiUrl, accessKey, secretKey, proxy);
 
 			if (socksProxyHost != null) {
 				System.setProperty("socksProxyHost", socksProxyHost);
@@ -271,10 +271,12 @@ public class ExecutionBuilder extends Builder {
 			params += ("robot=" + URLEncoder.encode(utils.transform(robot, envVars), "UTF-8") + "&browser=" + URLEncoder.encode(utils.transform(browserCode, envVars), "UTF-8") +
 				"&isSequential=" + (isSequential?"true":"false") + "&testServer=" + (testServer!=null?utils.transform(testServer, envVars):"") + "&apiServer=" + (apiServer!=null?utils.transform(apiServer, envVars):"") +
 				"&tags=" + (tags!=null?URLEncoder.encode(utils.transform(tags, envVars), "UTF-8"):"") + "&stepOptions=" + (stepOptions!=null?URLEncoder.encode(utils.transform(stepOptions, envVars), "UTF-8"):""));
-			JSONObject jobResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/run?" + params, l_userName, l_apiKey, proxy));
+			String callResult = launcher.getChannel().call(new PostCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/run?" + params, l_userName, l_apiKey, proxy));
+			JSONObject jobResult = new JSONObject().fromObject(callResult);
 
 			while (true) {
-				execResult = launcher.getChannel().call(new GetCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/jobs/" + jobResult.getString("jobID") +"/query", l_userName, l_apiKey, proxy));
+				callResult = launcher.getChannel().call(new GetCallable(l_domain + "/api/" + l_ownerName + "/" + l_workspace + "/jobs/" + jobResult.getString("jobID") +"/query", l_userName, l_apiKey, proxy));
+				execResult = new JSONObject().fromObject(callResult);
 				JSONArray tasks = execResult.getJSONArray("tasks");
 				for (int i = 0; i < tasks.size(); i++) {
 					JSONObject task = tasks.getJSONObject(i);
